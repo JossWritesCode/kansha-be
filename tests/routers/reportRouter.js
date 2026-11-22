@@ -3,6 +3,15 @@ const request = require('supertest');
 
 module.exports = () =>
 	describe('/reports router', () => {
+		// Seed data is dated 2020-03-01 and reports look back from "now",
+		// so pin the clock to shortly after the seed date.
+		let nowSpy;
+		beforeAll(() => {
+			const fixedNow = new Date('2020-03-15T00:00:00.000Z').getTime();
+			nowSpy = jest.spyOn(Date, 'now').mockReturnValue(fixedNow);
+		});
+		afterAll(() => nowSpy.mockRestore());
+
 		describe('GET /reports/', () => {
 			it('returns all reports', async () => {
 				const { body } = await request(server).get('/reports');
