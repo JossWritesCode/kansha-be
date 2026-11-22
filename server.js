@@ -16,13 +16,24 @@ const employeeRouter = require('./api/employee/employeeRouter');
 const csvUploadRouter = require('./api/csv/csvUploadRouter');
 const reportRouter = require('./api/reports/reportRouter');
 const teamRouter = require('./api/teams/teamRouter');
+const imageRouter = require('./api/images/imageRouter');
 
 // Global MiddleWare
 server.use(express.json());
 server.use(express.urlencoded({ extended: false }));
 server.use(helmet());
-server.use(cors());
+// FRONTEND_URL may be a comma-separated list (e.g. production + localhost).
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+	.split(',')
+	.map(o => o.trim().replace(/\/$/, ''))
+	.filter(Boolean);
+server.use(cors(allowedOrigins.length ? { origin: allowedOrigins } : undefined));
 server.use('/badges', badgeRouter);
+server.use('/images', imageRouter);
+
+server.get('/', (req, res) => {
+	res.status(200).json({ message: 'API is Running!' });
+});
 
 server.use(auth.validateToken);
 
@@ -38,9 +49,5 @@ server.use('/feed', liveFeedRouter);
 server.use('/rec', auth.validateId, recRouter);
 server.use('/comments', auth.validateId, commentRouter);
 server.use('/reactions', auth.validateId, reactionRouter);
-
-server.get('/', (req, res) => {
-	res.status(200).json({ message: 'API is Running!' });
-});
 
 module.exports = server;
