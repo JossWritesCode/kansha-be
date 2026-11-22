@@ -1,45 +1,53 @@
-# API Documentation
+# Kansha API
 
-[![Maintainability](https://api.codeclimate.com/v1/badges/da01f596f6f9f722c5b8/maintainability)](https://codeclimate.com/github/Lambda-School-Labs/kansha-be/maintainability)
+Backend for Kansha, an employee recognition app. Built with Node, Express, Knex and Postgres, with Auth0 for login and an S3-compatible bucket for profile pictures.
 
-![Heroku](https://heroku-badge.herokuapp.com/?app=kansha-api)
+## Running locally
 
-## Getting started
+1. Use Node 22 (`nvm use` reads `.nvmrc`).
+2. `npm install`
+3. Create a Postgres database, e.g. `createdb kansha_dev`.
+4. `cp .env.example .env` and fill it in (at minimum `DATABASE_URL` and the Auth0 values).
+5. `npx knex migrate:latest` creates the tables and the built-in badges.
+6. `npm run server` starts the API with nodemon on http://localhost:8000.
 
-To get the server running locally:
+Optional demo data: `npx knex seed:run`.
 
--   Clone this repo
--   **npm i** to install all required dependencies
--   **npm run server** to start the local server
--   **npm test** to start server using testing environment
+### Tests
 
-### NodeJS
+The tests need a Postgres database named `kansha_test`:
 
-Why did you choose this framework?
+```sh
+createdb kansha_test
+TEST_DB_HOST=localhost TEST_DB_USER=$USER npm test
+```
 
--   Was a big part of the Lambda Curriculum
--   Ability to keep data in JSON format
--   Future Devs can easily work with Node because of JS knowledge
+## Deploying to Railway
+
+The app works with Railway's default builder (Railpack) and needs no config file. `npm start` runs migrations and then starts the server.
+
+1. In a Railway project, add a **Postgres** database and a **Bucket**.
+2. Add a service from this GitHub repo.
+3. Set these variables on the service:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `DB_ENV` | `production` |
+| `CLIENT_ID` | Auth0 application Client ID |
+| `DOMAIN` | `https://<tenant>.us.auth0.com/` (trailing slash) |
+| `SIGNING_CERT_URL` | `https://<tenant>.us.auth0.com/.well-known/jwks.json` |
+| `FRONTEND_URL` | `https://<frontend>.up.railway.app` (comma-separate to add `http://localhost:3000`) |
+| `PUBLIC_API_URL` | this service's public URL |
+| `BUCKET`, `ENDPOINT`, `REGION`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY` | reference the bucket, e.g. `${{Bucket.BUCKET}}` |
+
+4. Under **Settings → Networking**, generate a public domain. Set the healthcheck path to `/`.
+
+Profile pictures are uploaded to the private bucket and served via `GET /images/:key`, which redirects to a short-lived signed URL. Badge art and the default avatar are static files in the frontend's `public/` folder.
 
 ## Endpoints
 
-For detailed documentation of our API endpoints, please refere to the documentation.md file in the root directory.
-
-## Environment Variables
-
-In order for the app to function correctly, the user must set up their own environment variables.
-
-create a .env file that includes the following:
-
--   DATABASE_URL =
--   CLIENT\*ID =
-
--   DOMAIN =
--   SIGNING_CERT_URL =
--   S3\*BUCKET_NAME =
--   S3\*ID =
--   S3\*KEY =
--   AWS_ACCESS_KEY_ID = \* AWS_SECRET_ACCESS_KEY =
+See [documentation.md](./documentation.md).
 
 ## Contributing
 
