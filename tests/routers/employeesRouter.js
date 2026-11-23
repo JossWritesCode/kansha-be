@@ -1,5 +1,6 @@
 const server = require('../../server');
 const request = require('supertest');
+const db = require('../../data/dbConfig');
 
 module.exports = () =>
 	describe('/employees router', () => {
@@ -38,10 +39,28 @@ module.exports = () =>
 								org_name: expect.any(String),
 								profile_picture: expect.any(String),
 								user_type: expect.any(String),
+								team_count: expect.any(Number),
 							},
 						]),
 					}),
 				);
+			});
+
+			it("should count each employee's teams", async () => {
+				const { body } = await request(server).get(
+					'/employees/organizations',
+				);
+				const rows = await db('TeamMembers')
+					.select('user_id')
+					.count('* as teams')
+					.groupBy('user_id');
+				const teamsByUser = Object.fromEntries(
+					rows.map(row => [row.user_id, Number(row.teams)]),
+				);
+				body.employees.forEach(emp =>
+					expect(emp.team_count).toBe(teamsByUser[emp.id] || 0),
+				);
+				expect(body.employees.some(emp => emp.team_count > 0)).toBe(true);
 			});
 		});
 

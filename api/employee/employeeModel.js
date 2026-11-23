@@ -81,7 +81,11 @@ async function getEmployeesByOrg(org_id, query = {}) {
 
 	return {
 		count,
-		employees,
+		// Postgres returns counts as strings
+		employees: employees.map(employee => ({
+			...employee,
+			team_count: Number(employee.team_count),
+		})),
 	};
 }
 
@@ -94,6 +98,12 @@ async function countEmployees(org_id) {
 }
 
 function getAllEmployeesByOrg(org_id) {
+	// How many teams each employee is on, so clients don't need a request per row
+	const teamCount = db('TeamMembers')
+		.count('*')
+		.where('TeamMembers.user_id', db.ref('Users.id'))
+		.as('team_count');
+
 	return db('Employees')
 		.join('Users', 'Users.id', 'Employees.user_id')
 		.join('Organizations', 'Organizations.id', 'Employees.org_id')
@@ -106,6 +116,7 @@ function getAllEmployeesByOrg(org_id) {
 			'user_type',
 			'department',
 			'Organizations.name as org_name',
+			teamCount,
 		)
 		.where({ org_id });
 }
