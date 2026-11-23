@@ -29,6 +29,10 @@ const fixSSEToken = (req, res, next) => {
 };
 
 module.exports.validateId = async (req, res, next) => {
+	if (!req.user) {
+		// validateToken should always set req.user; never continue without it
+		return res.status(401).json({ message: 'Not authenticated' });
+	}
 	try {
 		const { sub, email, name } = req.user;
 		// check if there is a user based on sub
@@ -56,7 +60,7 @@ module.exports.validateId = async (req, res, next) => {
 		}
 	} catch (err) {
 		console.error(err);
-		return res.status(500).json(...err);
+		return res.status(500).json({ message: 'Server error validating user' });
 	}
 };
 
@@ -67,7 +71,13 @@ router.use((err, req, res, next) => {
 	if (err.name === 'UnauthorizedError') {
 		return res.status(401).json({ message: err.message });
 	}
-	next();
+	// Anything else (e.g. the JWKS signing keys couldn't be fetched or the
+	// fetch was rate limited) means the token could not be verified. Never
+	// let the request continue unauthenticated.
+	console.error(err);
+	return res
+		.status(503)
+		.json({ message: 'Unable to verify credentials, please try again' });
 });
 
 module.exports.validateToken = router;

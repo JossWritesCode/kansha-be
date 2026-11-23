@@ -42,7 +42,7 @@ async function validatePeerId(req, res, next) {
 		}
 	} catch (err) {
 		console.error(err);
-		res.status(500).json(...err);
+		res.status(500).json({ message: 'Server error fetching peer' });
 	}
 }
 
