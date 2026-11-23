@@ -15,6 +15,10 @@ const tokenValidator = expressJwt({
 		rateLimit: true,
 		jwksRequestsPerMinute: 5,
 		jwksUri: process.env.SIGNING_CERT_URL,
+		// jwks-rsa's default turns "key not found" into an empty secret, which
+		// express-jwt 5 mishandles (it surfaces as a non-auth error, i.e. 503).
+		// Pass the error through so the handler below can answer 401.
+		handleSigningKeyError: (err, cb) => cb(err),
 	}),
 
 	// Validate the audience and the issuer.
@@ -70,6 +74,14 @@ router.use(tokenValidator);
 router.use((err, req, res, next) => {
 	if (err.name === 'UnauthorizedError') {
 		return res.status(401).json({ message: err.message });
+	}
+	if (err.name === 'SigningKeyNotFoundError') {
+		// The token was signed by a key SIGNING_CERT_URL doesn't publish:
+		// usually a different Auth0 tenant than the frontend logs in with.
+		console.error(`${err.message} (check SIGNING_CERT_URL)`);
+		return res
+			.status(401)
+			.json({ message: 'Token was signed by an unknown key' });
 	}
 	// Anything else (e.g. the JWKS signing keys couldn't be fetched or the
 	// fetch was rate limited) means the token could not be verified. Never
