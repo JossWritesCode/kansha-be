@@ -1,16 +1,14 @@
 require('dotenv').config();
 
 // Static images (default avatar, badge art) are served by the frontend from
-// kansha-fe/public. ASSET_BASE_URL overrides; otherwise the first FRONTEND_URL.
-const assetBaseUrl = () =>
-	(
-		process.env.ASSET_BASE_URL ||
-		(process.env.FRONTEND_URL || '').split(',')[0] ||
-		'http://localhost:3000'
-	)
-		.trim()
-		.replace(/\/$/, '');
-
-const assetUrl = path => `${assetBaseUrl()}/${path.replace(/^\//, '')}`;
+// kansha-fe/public. By default we store root-relative paths like
+// "/badges/mvp.svg", which the browser resolves against whichever frontend is
+// showing the page (Railway, localhost, a preview deploy...). Set
+// ASSET_BASE_URL only if the images are hosted somewhere else, e.g. a CDN.
+const assetUrl = path => {
+	const cleanPath = `/${path.replace(/^\//, '')}`;
+	const base = (process.env.ASSET_BASE_URL || '').trim().replace(/\/$/, '');
+	return `${base}${cleanPath}`;
+};
 
 module.exports = { assetUrl };
