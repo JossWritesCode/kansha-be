@@ -34,7 +34,15 @@ module.exports = {
 
 	production: {
 		client: 'pg',
-		connection: process.env.DATABASE_URL,
+		// Railway's private-network DATABASE_URL needs no SSL. Set DB_SSL=true
+		// when connecting through a public/proxied URL that requires it.
+		connection: {
+			connectionString: process.env.DATABASE_URL,
+			ssl:
+				process.env.DB_SSL === 'true'
+					? { rejectUnauthorized: false }
+					: false,
+		},
 		migrations: {
 			directory: './data/migrations',
 		},
@@ -53,10 +61,8 @@ module.exports = {
 			host: process.env.TEST_DB_HOST,
 			user: process.env.TEST_DB_USER,
 			password: process.env.TEST_DB_PASS,
-			database: 'kansha_test',
-			options: {
-				port: process.env.TEST_DB_PORT,
-			},
+			database: process.env.TEST_DB_NAME || 'kansha_test',
+			port: process.env.TEST_DB_PORT || 5432,
 		},
 		migrations: {
 			directory: './data/migrations',

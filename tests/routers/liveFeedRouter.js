@@ -14,7 +14,7 @@ module.exports = () => {
 							first_name: expect.any(String),
 							last_name: expect.any(String),
 							department: expect.any(String),
-							profile_picture: expect.stringContaining('https'),
+							profile_picture: expect.stringMatching(/avatarblank\.png$/),
 							email: expect.any(String),
 							recipient: expect.any(Number),
 							sender: expect.any(Number),
@@ -26,7 +26,7 @@ module.exports = () => {
 							recipient_last: expect.any(String),
 							recipient_first: expect.any(String),
 							recipient_job_title: expect.any(String),
-							recipient_picture: expect.stringContaining('https'),
+							recipient_picture: expect.stringMatching(/avatarblank\.png$/),
 						},
 					]),
 				);

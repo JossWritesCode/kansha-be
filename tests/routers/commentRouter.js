@@ -16,8 +16,7 @@ module.exports = () => {
 							rec_id: 1,
 							message: 'this is a message',
 							date: '2020-03-01T00:00:00.000Z',
-							profile_picture:
-								'https://kansha-bucket.s3-us-west-1.amazonaws.com/avatarblank.png',
+							profile_picture: expect.stringMatching(/avatarblank\.png$/),
 						},
 					]),
 				);

@@ -12,6 +12,7 @@ module.exports = (() => {
 					if (req.baseUrl === '/profile-pic') {
 						req.file = {
 							location: 'http://fake.url',
+							key: 'fake.png',
 						};
 					} else {
 						const parsed = Buffer.concat(chunks)

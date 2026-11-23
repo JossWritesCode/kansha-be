@@ -1,31 +1,34 @@
 name: build
 
-on: [push, pull_request]
+on:
+    push:
+        branches: [master]
+    pull_request:
 
 jobs:
-    build:
-        name: Test and publish test coverage
+    test:
+        name: Test
         runs-on: ubuntu-latest
         services:
             postgres:
-                image: postgres:12.1
+                image: postgres:16
                 env:
                     POSTGRES_USER: postgres
+                    POSTGRES_PASSWORD: postgres
                     POSTGRES_DB: kansha_test
                 ports:
                     - 5432:5432
                 options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
         steps:
-            - uses: actions/checkout@master
-            - uses: actions/setup-node@master
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
               with:
-                  node-version: '12'
-            - run: npm install
-            - uses: paambaati/codeclimate-action@v2.4.0
+                  node-version-file: .nvmrc
+                  cache: npm
+            - run: npm ci
+            - run: npm test -- --forceExit
               env:
                   TEST_DB_HOST: localhost
                   TEST_DB_USER: postgres
-                  TEST_DB_PORT: ${{ job.services.postgres.ports[5432] }}
-                  CC_TEST_REPORTER_ID: ${{ secrets.CodeClimateReporterId }}
-              with:
-                  coverageCommand: npm run coverage
+                  TEST_DB_PASS: postgres
+                  TEST_DB_PORT: 5432
