@@ -43,7 +43,7 @@ The app works with Railway's default builder (Railpack) and needs no config file
 
 4. Under **Settings → Networking**, generate a public domain. Set the healthcheck path to `/`.
 
-Profile pictures are uploaded to the private bucket and served via `GET /images/:key`, which redirects to a short-lived signed URL. Badge art and the default avatar are static files in the frontend's `public/` folder.
+Profile pictures are uploaded to the private bucket and served via `GET /images/:key`, which redirects to a short-lived signed URL. Badge art and the default avatar are static files in the frontend's `public/` folder. The database stores them as relative paths (e.g. `/badges/mvp.svg`), so they work on any frontend URL without configuration.
 
 ## Endpoints
 
