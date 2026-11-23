@@ -1,91 +1,120 @@
 # Kansha API
 
-Backend for Kansha, an employee recognition app. Built with Node, Express, Knex and Postgres, with Auth0 for login and an S3-compatible bucket for profile pictures.
+This is the **backend** for Kansha, a workplace recognition app. It's built with Node, Express, Knex and Postgres. Auth0 handles login, and profile pictures are stored in an S3-compatible bucket.
 
-## Running locally
+The **[frontend](https://github.com/kansha-rewards/kansha-fe)** talks to this API. The full list of endpoints is in [documentation.md](./documentation.md).
 
-1. Use Node 22 (`nvm use` reads `.nvmrc`).
-2. `npm install`
-3. Create a Postgres database, e.g. `createdb kansha_dev`.
-4. `cp .env.example .env` and fill it in (at minimum `DATABASE_URL` and the Auth0 values).
-5. `npx knex migrate:latest` creates the tables and the built-in badges.
-6. `npm run server` starts the API with nodemon on http://localhost:8000.
+## Run it locally
 
-Optional demo data: `npx knex seed:run`.
+You need Node 22 and Postgres.
 
-### Tests
+1. **Install:**
 
-The tests need a Postgres database named `kansha_test`:
+   ```sh
+   nvm use
+   npm install
+   ```
+
+2. **Create a database:**
+
+   ```sh
+   createdb kansha_dev
+   ```
+
+3. **Configure:**
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   Then fill in `.env`. For local development you only need these:
+
+   | Variable | What to put |
+   |---|---|
+   | `DATABASE_URL` | `postgres://<your-user>@localhost:5432/kansha_dev` |
+   | `CLIENT_ID` | Your Auth0 application's Client ID |
+   | `DOMAIN` | `https://<your-tenant>.auth0.com/` (**with** the trailing slash) |
+   | `SIGNING_CERT_URL` | `https://<your-tenant>.auth0.com/.well-known/jwks.json` |
+   | `FRONTEND_URL` | `http://localhost:3000` |
+
+   Use the **same Auth0 application** as the frontend (see the [frontend's Auth0 setup](https://github.com/kansha-rewards/kansha-fe#set-up-auth0)). Your tenant name is the start of its Domain, e.g. `my-tenant.us.auth0.com`.
+
+   The bucket variables are only needed to upload profile pictures.
+
+4. **Create the tables:**
+
+   ```sh
+   npm run migrate
+   ```
+
+5. **Start it:**
+
+   ```sh
+   npm run server
+   ```
+
+   The API runs on http://localhost:8000. Opening it should show `{"message":"API is Running!"}`.
+
+**Optional demo data:** `npx knex seed:run`. This **deletes everything** in the database first.
+
+## Deploy to Railway
+
+No config file is needed. On start, the app runs any new migrations and then starts the server.
+
+1. In your Railway project, add a **Postgres** database and a **Bucket**.
+2. Add a service from this GitHub repo.
+3. Set these variables on the service:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `DB_ENV` | `production` |
+   | `CLIENT_ID` | Auth0 Client ID (same as the frontend's) |
+   | `DOMAIN` | `https://<your-tenant>.auth0.com/` (with the trailing slash) |
+   | `SIGNING_CERT_URL` | `https://<your-tenant>.auth0.com/.well-known/jwks.json` |
+   | `FRONTEND_URL` | The frontend's URL. To allow more than one, separate them with commas. |
+   | `PUBLIC_API_URL` | This service's public URL |
+   | `BUCKET`, `ENDPOINT`, `REGION`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY` | Reference the bucket, e.g. `${{Bucket.BUCKET}}` |
+
+4. Under **Settings → Networking**, generate a public domain and set the healthcheck path to `/`.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm run server` | Starts the API and restarts it when files change |
+| `npm start` | Runs migrations, then starts the API (used on Railway) |
+| `npm run migrate` | Creates or updates the database tables |
+| `npm test` | Runs the tests (see below) |
+
+**Tests** need their own database named `kansha_test`:
 
 ```sh
 createdb kansha_test
 TEST_DB_HOST=localhost TEST_DB_USER=$USER npm test
 ```
 
-## Deploying to Railway
+## Troubleshooting
 
-The app works with Railway's default builder (Railpack) and needs no config file. `npm start` runs migrations and then starts the server.
+Login problems show up as an error from `GET /profile`. In the frontend, it appears in a red banner after login.
 
-1. In a Railway project, add a **Postgres** database and a **Bucket**.
-2. Add a service from this GitHub repo.
-3. Set these variables on the service:
-
-| Variable | Value |
+| Error | Fix |
 |---|---|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-| `DB_ENV` | `production` |
-| `CLIENT_ID` | Auth0 application Client ID |
-| `DOMAIN` | `https://<tenant>.us.auth0.com/` (trailing slash) |
-| `SIGNING_CERT_URL` | `https://<tenant>.us.auth0.com/.well-known/jwks.json` |
-| `FRONTEND_URL` | `https://<frontend>.up.railway.app` (comma-separate to add `http://localhost:3000`) |
-| `PUBLIC_API_URL` | this service's public URL |
-| `BUCKET`, `ENDPOINT`, `REGION`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY` | reference the bucket, e.g. `${{Bucket.BUCKET}}` |
+| `Token was signed by an unknown key` | `SIGNING_CERT_URL` points at a different Auth0 tenant than the frontend uses. |
+| `jwt audience invalid` | `CLIENT_ID` doesn't match the frontend's `REACT_APP_CLIENT_ID`. |
+| `jwt issuer invalid` | `DOMAIN` is wrong. Check that it has `https://` and the trailing slash. |
+| `Unable to verify credentials` (503) | The API couldn't download Auth0's keys. Check that `SIGNING_CERT_URL` opens in a browser. |
+| A CORS error in the browser | Add the frontend's URL to `FRONTEND_URL`. |
 
-4. Under **Settings → Networking**, generate a public domain. Set the healthcheck path to `/`.
+On Railway, changing a variable redeploys the service automatically. The service logs show more detail for each error.
 
-Profile pictures are uploaded to the private bucket and served via `GET /images/:key`, which redirects to a short-lived signed URL. Badge art and the default avatar are static files in the frontend's `public/` folder. The database stores them as relative paths (e.g. `/badges/mvp.svg`), so they work on any frontend URL without configuration.
+## How images work
 
-## Endpoints
-
-See [documentation.md](./documentation.md).
+- **Profile pictures** are uploaded to the private bucket. `GET /images/:key` redirects to a short-lived link to the file.
+- **Badges and the default avatar** are files in the frontend's `public/` folder. The database stores their paths (like `/badges/mvp.svg`), so they work on any frontend URL.
 
 ## Contributing
 
-When contributing to this repository, please first discuss the change you wish to make via issue, email, or any other method with the owners of this repository before making a change.
+Open an issue or a pull request. Use [Conventional Commits](https://www.conventionalcommits.org) for commit messages and PR titles (e.g. `fix(auth): ...`). Please follow the [code of conduct](./code_of_conduct.md).
 
-Please note we have a [code of conduct](./code_of_conduct.md). Please follow it in all your interactions with the project.
-
-### Issue/Bug Request
-
-**If you are having an issue with the existing project code, please submit a bug report under the following guidelines:**
-
--   Cck first to see if your issue has already been reported.
--   Cck to see if the issue has recently been fixed by attempting to reproduce the issue using the latest master branch in the repository.
--   Cate a live example of the problem.
--   Smit a detailed bug report including your environment & browser, steps to reproduce the issue, actual and expected outcomes, where you believe the issue is originating from, and any potential solutions you have considered.
-
-### Feature Requests
-
-We would love to hear from you about new features which would improve this app and further the aims of our project. Please provide as much detail and information as possible to show us why you think your new feature should be implemented.
-
-### Pull Requests
-
-If you have developed a patch, bug fix, or new feature that would improve this app, please submit a pull request. It is best to communicate your ideas with the developers first before investing a great deal of time into a pull request to ensure that it will mesh smoothly with the project.
-
-Remember that this project is licensed under the MIT license, and by submitting a pull request, you agree that your work will be, too.
-
-#### Pull Request Guidelines
-
--   Ensure any install or build dependencies are removed before the end of the layer when doing a build.
--   Update the README.md with details of changes to the interface, including new plist variables, exposed ports, useful file locations and container parameters.
--   Ensure that your code conforms to our existing code conventions and test coverage.
--   Include the relevant issue number, if applicable.
--   You may merge the Pull Request in once you have the sign-off of two other developers, or if you do not have permission to do that, you may request the second reviewer to merge it for you.
-
-### Attribution
-
-These contribution guidelines have been adapted from [this good-Contributing.md-template](https://gist.github.com/PurpleBooth/b24679402957c63ec426).
-
-## Documentation
-
-See [Frontend Documentation](https://github.com/Lambda-School-Labs/kansha-fe/blob/master/README.md) for details on the fronend of our project.
+Licensed under the [MIT License](./LICENSE).
